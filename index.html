@@ -1,586 +1,1094 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  BarChart3, 
-  AlertTriangle, 
-  Bell, 
-  Search, 
-  Menu, 
-  X, 
-  ChevronDown, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Truck, 
-  Calendar,
-  Filter,
-  Download,
-  MoreVertical,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Thermometer
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DairyPro Distribution Dashboard</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
-// --- Mock Data ---
-
-const MOCK_PRODUCTS = [
-  { id: 1, name: 'Fresh Milk (Full Cream)', category: 'Milk', stock: 120, unit: 'Liters', price: 65, status: 'In Stock', expiry: '2023-11-20', batch: 'B-101' },
-  { id: 2, name: 'Standard Milk (Toned)', category: 'Milk', stock: 45, unit: 'Liters', price: 54, status: 'Low Stock', expiry: '2023-11-18', batch: 'B-102' },
-  { id: 3, name: 'Premium Curd', category: 'Yogurt', stock: 200, unit: 'Cups', price: 30, status: 'In Stock', expiry: '2023-11-25', batch: 'C-201' },
-  { id: 4, name: 'Salted Butter', category: 'Butter', stock: 15, unit: 'Packets', price: 240, status: 'Critical', expiry: '2023-12-10', batch: 'BU-305' },
-  { id: 5, name: 'Paneer (Cottage Cheese)', category: 'Cheese', stock: 80, unit: 'Kg', price: 420, status: 'In Stock', expiry: '2023-11-19', batch: 'P-401' },
-  { id: 6, name: 'Strawberry Yogurt', category: 'Yogurt', stock: 150, unit: 'Cups', price: 45, status: 'In Stock', expiry: '2023-11-22', batch: 'Y-505' },
-  { id: 7, name: 'Ghee (Clarified Butter)', category: 'Ghee', stock: 300, unit: 'Jars', price: 650, status: 'In Stock', expiry: '2024-05-15', batch: 'G-601' },
-  { id: 8, name: 'Chocolate Milk', category: 'Beverage', stock: 0, unit: 'Bottles', price: 35, status: 'Out of Stock', expiry: '2023-11-15', batch: 'CM-701' },
-];
-
-const MOCK_ORDERS = [
-  { id: '#ORD-7782', customer: 'Green Leaf Cafe', date: 'Oct 24, 2023', amount: 4500, status: 'Pending', items: 'Milk, Curd' },
-  { id: '#ORD-7781', customer: 'Sunshine Bakery', date: 'Oct 24, 2023', amount: 12500, status: 'Delivered', items: 'Butter, Paneer' },
-  { id: '#ORD-7780', customer: 'Daily Mart', date: 'Oct 23, 2023', amount: 3200, status: 'Cancelled', items: 'Milk' },
-  { id: '#ORD-7779', customer: 'Hotel Royal', date: 'Oct 23, 2023', amount: 8900, status: 'Packed', items: 'Ghee, Curd' },
-  { id: '#ORD-7778', customer: 'City Hospital Canteen', date: 'Oct 22, 2023', amount: 6700, status: 'Delivered', items: 'Milk, Yogurt' },
-];
-
-const MOCK_CUSTOMERS = [
-  { id: 1, name: 'Green Leaf Cafe', type: 'Business', orders: 45, totalSpent: 124000, lastOrder: 'Oct 24, 2023', status: 'Active' },
-  { id: 2, name: 'Sunshine Bakery', type: 'Business', orders: 120, totalSpent: 450000, lastOrder: 'Oct 24, 2023', status: 'Active' },
-  { id: 3, name: 'John Doe', type: 'Individual', orders: 12, totalSpent: 5400, lastOrder: 'Oct 20, 2023', status: 'Inactive' },
-];
-
-const SALES_DATA = [
-  { day: 'Mon', sales: 45000 },
-  { day: 'Tue', sales: 52000 },
-  { day: 'Wed', sales: 49000 },
-  { day: 'Thu', sales: 63000 },
-  { day: 'Fri', sales: 58000 },
-  { day: 'Sat', sales: 72000 },
-  { day: 'Sun', sales: 69000 },
-];
-
-// --- Components ---
-
-// 1. Custom Card Component
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-slate-100 ${className}`}>
-    {children}
-  </div>
-);
-
-// 2. Status Badge
-const StatusBadge = ({ status }) => {
-  const styles = {
-    'In Stock': 'bg-emerald-100 text-emerald-700',
-    'Low Stock': 'bg-amber-100 text-amber-700',
-    'Critical': 'bg-red-100 text-red-700',
-    'Out of Stock': 'bg-slate-100 text-slate-500',
-    'Pending': 'bg-amber-50 text-amber-600 border border-amber-200',
-    'Packed': 'bg-blue-50 text-blue-600 border border-blue-200',
-    'Delivered': 'bg-emerald-50 text-emerald-600 border border-emerald-200',
-    'Cancelled': 'bg-red-50 text-red-600 border border-red-200',
-    'Active': 'bg-emerald-100 text-emerald-700',
-    'Inactive': 'bg-slate-100 text-slate-600',
-  };
-
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-      {status}
-    </span>
-  );
-};
-
-// 3. Simple Bar Chart (SVG)
-const SimpleBarChart = ({ data }) => {
-  const maxVal = Math.max(...data.map(d => d.sales));
-  
-  return (
-    <div className="flex items-end justify-between h-48 w-full gap-2 mt-4">
-      {data.map((item, idx) => (
-        <div key={idx} className="flex flex-col items-center w-full group">
-          <div className="relative w-full flex items-end justify-center h-40">
-             {/* Tooltip */}
-            <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs px-2 py-1 rounded">
-              ${item.sales.toLocaleString()}
-            </div>
-            {/* Bar */}
-            <div 
-              className="w-full max-w-[40px] bg-blue-500 rounded-t-md hover:bg-blue-600 transition-all duration-300"
-              style={{ height: `${(item.sales / maxVal) * 100}%` }}
-            ></div>
-          </div>
-          <span className="text-xs text-slate-500 mt-2 font-medium">{item.day}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// 4. Donut Chart (CSS Conic Gradient)
-const DonutChart = () => {
-  return (
-    <div className="flex items-center justify-center py-6">
-      <div className="relative w-48 h-48 rounded-full" 
-           style={{ 
-             background: 'conic-gradient(#3b82f6 0% 45%, #10b981 45% 75%, #f59e0b 75% 90%, #ef4444 90% 100%)' 
-           }}>
-        <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold text-slate-800">1,240</span>
-          <span className="text-xs text-slate-500 uppercase tracking-wider">Total Units</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Views ---
-
-const DashboardHome = () => (
-  <div className="space-y-6 animate-fade-in">
-    {/* Summary Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {[
-        { title: 'Total Revenue', value: '$24,500', trend: '+12%', icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { title: 'Orders Today', value: '145', trend: '+5%', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { title: 'Low Stock Items', value: '12', trend: 'Warning', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { title: 'Active Distributors', value: '48', trend: '+2', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-      ].map((stat, idx) => (
-        <Card key={idx} className="p-5 hover:shadow-md transition-shadow cursor-pointer">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">{stat.title}</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">{stat.value}</h3>
-            </div>
-            <div className={`p-3 rounded-lg ${stat.bg}`}>
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm">
-            {stat.trend === 'Warning' ? (
-              <span className="text-amber-600 flex items-center font-medium"><AlertTriangle className="w-3 h-3 mr-1"/> Action Needed</span>
-            ) : (
-              <span className="text-emerald-600 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1"/> {stat.trend} from yesterday</span>
-            )}
-          </div>
-        </Card>
-      ))}
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Sales Graph */}
-      <Card className="lg:col-span-2 p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-slate-800">Sales Overview</h3>
-          <select className="text-sm border-slate-200 rounded-md text-slate-600 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 px-2 py-1">
-            <option>Last 7 Days</option>
-            <option>Last Month</option>
-          </select>
-        </div>
-        <SimpleBarChart data={SALES_DATA} />
-      </Card>
-
-      {/* Stock Distribution */}
-      <Card className="p-6">
-        <h3 className="text-lg font-bold text-slate-800 mb-2">Stock Distribution</h3>
-        <DonutChart />
-        <div className="space-y-3 mt-4">
-          {[
-            { label: 'Milk & Cream', color: 'bg-blue-500', val: '45%' },
-            { label: 'Yogurt & Curd', color: 'bg-emerald-500', val: '30%' },
-            { label: 'Butter & Cheese', color: 'bg-amber-500', val: '15%' },
-            { label: 'Others', color: 'bg-red-500', val: '10%' },
-          ].map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between text-sm">
-              <div className="flex items-center">
-                <span className={`w-3 h-3 rounded-full mr-2 ${item.color}`}></span>
-                <span className="text-slate-600">{item.label}</span>
-              </div>
-              <span className="font-semibold text-slate-800">{item.val}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-
-    {/* Recent Orders & Alerts Table */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="lg:col-span-2 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="text-lg font-bold text-slate-800">Recent Orders</h3>
-          <button className="text-blue-600 text-sm font-medium hover:underline">View All</button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-3">Order ID</th>
-                <th className="px-6 py-3">Customer</th>
-                <th className="px-6 py-3">Amount</th>
-                <th className="px-6 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_ORDERS.slice(0, 4).map((order) => (
-                <tr key={order.id} className="bg-white border-b border-slate-50 hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-900">{order.id}</td>
-                  <td className="px-6 py-4 text-slate-600">{order.customer}</td>
-                  <td className="px-6 py-4 font-medium">${order.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4"><StatusBadge status={order.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-      
-      {/* Critical Alerts */}
-      <Card className="p-0 overflow-hidden bg-white">
-        <div className="p-4 border-b border-slate-100 bg-rose-50">
-          <h3 className="text-rose-800 font-bold flex items-center">
-            <AlertTriangle className="w-5 h-5 mr-2" /> Critical Alerts
-          </h3>
-        </div>
-        <div className="divide-y divide-slate-100">
-          <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
-            <div className="flex justify-between items-start">
-              <h4 className="text-sm font-semibold text-slate-800">Fresh Milk Expiring</h4>
-              <span className="text-xs text-rose-500 font-medium">2h ago</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Batch B-102 (45 Liters) expires tomorrow. Action required.</p>
-          </div>
-          <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
-            <div className="flex justify-between items-start">
-              <h4 className="text-sm font-semibold text-slate-800">Freezer 2 Temp High</h4>
-              <span className="text-xs text-rose-500 font-medium">15m ago</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Temperature detected at 8°C. Check compressor.</p>
-          </div>
-           <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
-            <div className="flex justify-between items-start">
-              <h4 className="text-sm font-semibold text-slate-800">Stockout Warning</h4>
-              <span className="text-xs text-amber-500 font-medium">1d ago</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">Chocolate Milk stock depleted.</p>
-          </div>
-        </div>
-      </Card>
-    </div>
-  </div>
-);
-
-const InventoryView = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredProducts = MOCK_PRODUCTS.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.batch.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-800">Inventory Management</h2>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button className="flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <Download className="w-4 h-4 mr-2" /> Export
-          </button>
-          <button className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-            + Add Product
-          </button>
-        </div>
-      </div>
-
-      <Card className="overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between bg-white">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search product, batch..." 
-              className="pl-10 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
-              <Filter className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-3">Product Name</th>
-                <th className="px-6 py-3">Category</th>
-                <th className="px-6 py-3">Batch</th>
-                <th className="px-6 py-3">Stock</th>
-                <th className="px-6 py-3">Price/Unit</th>
-                <th className="px-6 py-3">Expiry</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((product) => (
-                <tr key={product.id} className="bg-white border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-slate-900">{product.name}</td>
-                  <td className="px-6 py-4 text-slate-600">{product.category}</td>
-                  <td className="px-6 py-4 font-mono text-xs text-slate-500">{product.batch}</td>
-                  <td className="px-6 py-4 font-medium">
-                    {product.stock} <span className="text-xs text-slate-400 font-normal">{product.unit}</span>
-                  </td>
-                  <td className="px-6 py-4">${product.price}</td>
-                  <td className="px-6 py-4 text-slate-600 flex items-center">
-                    {product.expiry}
-                    {new Date(product.expiry) < new Date('2023-11-20') && (
-                       <AlertTriangle className="w-3 h-3 text-red-500 ml-2" />
-                    )}
-                  </td>
-                  <td className="px-6 py-4"><StatusBadge status={product.status} /></td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="text-slate-400 hover:text-blue-600 transition-colors">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filteredProducts.length === 0 && (
-          <div className="p-12 text-center text-slate-500">
-            No products found matching "{searchTerm}"
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-};
-
-const OrdersView = () => (
-  <div className="space-y-6 animate-fade-in">
-    <div className="flex justify-between items-center">
-      <h2 className="text-2xl font-bold text-slate-800">Order Management</h2>
-      <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-        + Create Order
-      </button>
-    </div>
-
-    {/* Order Kanban-like Cards for Mobile, Table for Desktop */}
-    <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-3">Order ID</th>
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3">Customer</th>
-                <th className="px-6 py-3">Items</th>
-                <th className="px-6 py-3">Amount</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_ORDERS.map((order) => (
-                <tr key={order.id} className="bg-white border-b border-slate-50 hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-blue-600">{order.id}</td>
-                  <td className="px-6 py-4 text-slate-500">{order.date}</td>
-                  <td className="px-6 py-4 font-medium text-slate-800">{order.customer}</td>
-                  <td className="px-6 py-4 text-slate-600 truncate max-w-xs">{order.items}</td>
-                  <td className="px-6 py-4 font-bold text-slate-900">${order.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4"><StatusBadge status={order.status} /></td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                       <button className="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Mark Delivered"><CheckCircle className="w-4 h-4" /></button>
-                       <button className="p-1 text-rose-600 hover:bg-rose-50 rounded" title="Cancel Order"><XCircle className="w-4 h-4" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-    </Card>
-  </div>
-);
-
-// --- Main App Shell ---
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Responsive check
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const NavItem = ({ id, label, icon: Icon }) => (
-    <button
-      onClick={() => {
-        setActiveTab(id);
-        if (isMobile) setIsSidebarOpen(false);
-      }}
-      className={`w-full flex items-center px-4 py-3 mb-1 rounded-lg transition-colors duration-200 ${
-        activeTab === id 
-          ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
-          : 'text-slate-600 hover:bg-slate-100'
-      }`}
-    >
-      <Icon className={`w-5 h-5 mr-3 ${activeTab === id ? 'text-white' : 'text-slate-400'}`} />
-      <span className="font-medium text-sm">{label}</span>
-    </button>
-  );
-
-  return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
-      
-      {/* Mobile Sidebar Overlay */}
-      {isMobile && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20 transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col ${
-          isMobile && !isSidebarOpen ? '-translate-x-full' : 'translate-x-0'
-        }`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-800">DairyPro</span>
-          </div>
-          {isMobile && (
-            <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400">
-              <X className="w-6 h-6" />
-            </button>
-          )}
-        </div>
-
-        <div className="px-4 py-2 flex-1 overflow-y-auto">
-          <div className="space-y-1">
-            <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Main</p>
-            <NavItem id="dashboard" label="Dashboard" icon={LayoutDashboard} />
-            <NavItem id="inventory" label="Inventory" icon={Package} />
-            <NavItem id="orders" label="Orders" icon={ShoppingCart} />
-            <NavItem id="customers" label="Customers" icon={Users} />
-          </div>
-
-          <div className="space-y-1 mt-8">
-            <p className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Analytics & Tools</p>
-            <NavItem id="analytics" label="Analytics" icon={BarChart3} />
-            <NavItem id="deliveries" label="Deliveries" icon={Truck} />
-            <NavItem id="schedule" label="Schedule" icon={Calendar} />
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-slate-100">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
-            <img 
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
-              alt="User" 
-              className="w-9 h-9 rounded-full bg-slate-200"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-800 truncate">Alex Distributor</p>
-              <p className="text-xs text-slate-500 truncate">alex@dairypro.com</p>
-            </div>
-            <ChevronDown className="w-4 h-4 text-slate-400" />
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden text-slate-500 hover:text-slate-700"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <h1 className="text-lg font-bold text-slate-700 capitalize hidden sm:block">
-              {activeTab}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Search Bar - Hidden on small mobile */}
-            <div className="hidden md:flex relative">
-              <input 
-                type="text" 
-                placeholder="Global search..." 
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            </div>
-
-            <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
-          </div>
-        </header>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 bg-slate-50 scroll-smooth">
-          <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <DashboardHome />}
-            {activeTab === 'inventory' && <InventoryView />}
-            {activeTab === 'orders' && <OrdersView />}
-            
-            {/* Placeholder for other tabs */}
-            {['customers', 'analytics', 'deliveries', 'schedule'].includes(activeTab) && (
-               <div className="flex flex-col items-center justify-center h-96 text-center animate-fade-in">
-                 <div className="bg-white p-8 rounded-full mb-4 shadow-sm">
-                   <Package className="w-12 h-12 text-blue-200" />
-                 </div>
-                 <h2 className="text-xl font-bold text-slate-800">Module Under Construction</h2>
-                 <p className="text-slate-500 mt-2 max-w-md">
-                   The {activeTab} module is currently being built. Check back later for updates on this feature.
-                 </p>
-                 <button 
-                   onClick={() => setActiveTab('dashboard')}
-                   className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                 >
-                   Return to Dashboard
-                 </button>
-               </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      <style>{`
-        .animate-fade-in {
-          animation: fadeIn 0.4s ease-in-out;
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Custom scrollbar for better UI */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(10px) scale(0.99); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
-      `}</style>
-    </div>
-  );
-}
+        .animate-fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- Icons (Replaced lucide-react imports with inline SVGs for portability) ---
+        const Icon = ({ children, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const LayoutDashboard = (p) => <Icon {...p}><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></Icon>;
+        const Package = (p) => <Icon {...p}><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-9"/></Icon>;
+        const ShoppingCart = (p) => <Icon {...p}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></Icon>;
+        const Users = (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
+        const BarChart3 = (p) => <Icon {...p}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></Icon>;
+        const AlertTriangle = (p) => <Icon {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></Icon>;
+        const Bell = (p) => <Icon {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></Icon>;
+        const Search = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></Icon>;
+        const Menu = (p) => <Icon {...p}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></Icon>;
+        const X = (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
+        const ChevronDown = (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>;
+        const TrendingUp = (p) => <Icon {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Icon>;
+        const TrendingDown = (p) => <Icon {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></Icon>;
+        const DollarSign = (p) => <Icon {...p}><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></Icon>;
+        const Truck = (p) => <Icon {...p}><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></Icon>;
+        const Calendar = (p) => <Icon {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></Icon>;
+        const Filter = (p) => <Icon {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></Icon>;
+        const Download = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></Icon>;
+        const MoreVertical = (p) => <Icon {...p}><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></Icon>;
+        const CheckCircle = (p) => <Icon {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></Icon>;
+        const XCircle = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></Icon>;
+        const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
+        const Thermometer = (p) => <Icon {...p}><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></Icon>;
+        const MapPin = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>;
+        const Phone = (p) => <Icon {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Icon>;
+        const Mail = (p) => <Icon {...p}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></Icon>;
+        const ChevronRight = (p) => <Icon {...p}><path d="m9 18 6-6-6-6"/></Icon>;
+        const Plus = (p) => <Icon {...p}><path d="M5 12h14"/><path d="M12 5v14"/></Icon>;
+
+        // --- Mock Data ---
+
+        const MOCK_PRODUCTS = [
+          { id: 1, name: 'Fresh Milk (Full Cream)', category: 'Milk', stock: 120, unit: 'Liters', price: 65, status: 'In Stock', expiry: '2023-11-20', batch: 'B-101' },
+          { id: 2, name: 'Standard Milk (Toned)', category: 'Milk', stock: 45, unit: 'Liters', price: 54, status: 'Low Stock', expiry: '2023-11-18', batch: 'B-102' },
+          { id: 3, name: 'Premium Curd', category: 'Yogurt', stock: 200, unit: 'Cups', price: 30, status: 'In Stock', expiry: '2023-11-25', batch: 'C-201' },
+          { id: 4, name: 'Salted Butter', category: 'Butter', stock: 15, unit: 'Packets', price: 240, status: 'Critical', expiry: '2023-12-10', batch: 'BU-305' },
+          { id: 5, name: 'Paneer (Cottage Cheese)', category: 'Cheese', stock: 80, unit: 'Kg', price: 420, status: 'In Stock', expiry: '2023-11-19', batch: 'P-401' },
+          { id: 6, name: 'Strawberry Yogurt', category: 'Yogurt', stock: 150, unit: 'Cups', price: 45, status: 'In Stock', expiry: '2023-11-22', batch: 'Y-505' },
+          { id: 7, name: 'Ghee (Clarified Butter)', category: 'Ghee', stock: 300, unit: 'Jars', price: 650, status: 'In Stock', expiry: '2024-05-15', batch: 'G-601' },
+          { id: 8, name: 'Chocolate Milk', category: 'Beverage', stock: 0, unit: 'Bottles', price: 35, status: 'Out of Stock', expiry: '2023-11-15', batch: 'CM-701' },
+        ];
+
+        const MOCK_ORDERS = [
+          { id: '#ORD-7782', customer: 'Green Leaf Cafe', date: 'Oct 24, 2023', amount: 4500, status: 'Pending', items: 'Milk, Curd' },
+          { id: '#ORD-7781', customer: 'Sunshine Bakery', date: 'Oct 24, 2023', amount: 12500, status: 'Delivered', items: 'Butter, Paneer' },
+          { id: '#ORD-7780', customer: 'Daily Mart', date: 'Oct 23, 2023', amount: 3200, status: 'Cancelled', items: 'Milk' },
+          { id: '#ORD-7779', customer: 'Hotel Royal', date: 'Oct 23, 2023', amount: 8900, status: 'Packed', items: 'Ghee, Curd' },
+          { id: '#ORD-7778', customer: 'City Hospital Canteen', date: 'Oct 22, 2023', amount: 6700, status: 'Delivered', items: 'Milk, Yogurt' },
+        ];
+
+        const MOCK_CUSTOMERS = [
+          { id: 1, name: 'Green Leaf Cafe', type: 'Business', phone: '+1 234 567 890', email: 'contact@greenleaf.com', orders: 45, totalSpent: 124000, status: 'Active', tier: 'Gold' },
+          { id: 2, name: 'Sunshine Bakery', type: 'Business', phone: '+1 987 654 321', email: 'orders@sunshine.com', orders: 120, totalSpent: 450000, status: 'Active', tier: 'Platinum' },
+          { id: 3, name: 'John Doe', type: 'Individual', phone: '+1 555 019 283', email: 'john.d@email.com', orders: 12, totalSpent: 5400, status: 'Inactive', tier: 'Silver' },
+          { id: 4, name: 'City Hospital', type: 'Institutional', phone: '+1 555 999 888', email: 'procurement@cityhosp.org', orders: 89, totalSpent: 890000, status: 'Active', tier: 'Platinum' },
+          { id: 5, name: 'Daily Mart', type: 'Retail', phone: '+1 555 444 333', email: 'manager@dailymart.com', orders: 23, totalSpent: 12000, status: 'Active', tier: 'Gold' },
+        ];
+
+        const SALES_DATA = [
+          { day: 'Mon', sales: 45000 },
+          { day: 'Tue', sales: 52000 },
+          { day: 'Wed', sales: 49000 },
+          { day: 'Thu', sales: 63000 },
+          { day: 'Fri', sales: 58000 },
+          { day: 'Sat', sales: 72000 },
+          { day: 'Sun', sales: 69000 },
+        ];
+
+        const MOCK_DELIVERIES = [
+          { id: 'DLV-001', driver: 'Mike Ross', vehicle: 'Van A1', route: 'Downtown Sector', status: 'On Route', progress: 65, nextStop: 'Green Leaf Cafe' },
+          { id: 'DLV-002', driver: 'Harvey S.', vehicle: 'Truck T2', route: 'Westside Highway', status: 'Loading', progress: 15, nextStop: 'Warehouse' },
+          { id: 'DLV-003', driver: 'Rachel Z.', vehicle: 'Van A2', route: 'North Hills', status: 'Completed', progress: 100, nextStop: '-' },
+          { id: 'DLV-004', driver: 'Louis L.', vehicle: 'Truck T1', route: 'East End', status: 'Delayed', progress: 40, nextStop: 'Sunshine Bakery' },
+        ];
+
+        const MOCK_TASKS = [
+          { id: 1, title: 'Check Freezer Temperature', time: '09:00 AM', priority: 'High', status: 'Pending' },
+          { id: 2, title: 'Call Supplier for Packaging', time: '11:30 AM', priority: 'Medium', status: 'Completed' },
+          { id: 3, title: 'Update Monthly Stock Sheet', time: '02:00 PM', priority: 'Low', status: 'Pending' },
+          { id: 4, title: 'Driver Schedule Review', time: '04:00 PM', priority: 'High', status: 'Pending' },
+        ];
+
+        // --- Components ---
+
+        // 1. Custom Card Component
+        const Card = ({ children, className = "", noPadding = false }) => (
+          <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow duration-300 ${noPadding ? '' : 'p-6'} ${className}`}>
+            {children}
+          </div>
+        );
+
+        // 2. Status Badge
+        const StatusBadge = ({ status }) => {
+          const styles = {
+            // Inventory
+            'In Stock': 'bg-emerald-100 text-emerald-700',
+            'Low Stock': 'bg-amber-100 text-amber-700',
+            'Critical': 'bg-red-100 text-red-700',
+            'Out of Stock': 'bg-slate-100 text-slate-500',
+            // Orders
+            'Pending': 'bg-amber-50 text-amber-600 border border-amber-200',
+            'Packed': 'bg-blue-50 text-blue-600 border border-blue-200',
+            'Delivered': 'bg-emerald-50 text-emerald-600 border border-emerald-200',
+            'Cancelled': 'bg-red-50 text-red-600 border border-red-200',
+            // Delivery
+            'On Route': 'bg-blue-100 text-blue-700',
+            'Loading': 'bg-amber-100 text-amber-700',
+            'Completed': 'bg-emerald-100 text-emerald-700',
+            'Delayed': 'bg-rose-100 text-rose-700',
+            // General
+            'Active': 'bg-emerald-100 text-emerald-700',
+            'Inactive': 'bg-slate-100 text-slate-600',
+            'High': 'bg-rose-50 text-rose-600',
+            'Medium': 'bg-amber-50 text-amber-600',
+            'Low': 'bg-blue-50 text-blue-600',
+          };
+
+          return (
+            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+              {status}
+            </span>
+          );
+        };
+
+        // 3. Simple Bar Chart (SVG)
+        const SimpleBarChart = ({ data }) => {
+          const maxVal = Math.max(...data.map(d => d.sales));
+          
+          return (
+            <div className="flex items-end justify-between h-48 w-full gap-2 mt-4">
+              {data.map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center w-full group cursor-pointer">
+                  <div className="relative w-full flex items-end justify-center h-40 bg-slate-50 rounded-lg overflow-hidden border border-slate-100">
+                     {/* Tooltip */}
+                    <div className="absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] px-2 py-1 rounded shadow-lg z-10 pointer-events-none">
+                      ${item.sales.toLocaleString()}
+                    </div>
+                    {/* Bar */}
+                    <div 
+                      className="w-full mx-1 bg-blue-500 rounded-t-sm opacity-80 group-hover:opacity-100 group-hover:bg-blue-600 transition-all duration-300 relative"
+                      style={{ height: `${(item.sales / maxVal) * 100}%` }}
+                    >
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/20"></div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-2 font-medium uppercase tracking-wide">{item.day}</span>
+                </div>
+              ))}
+            </div>
+          );
+        };
+
+        // 4. Donut Chart (CSS Conic Gradient)
+        const DonutChart = () => {
+          return (
+            <div className="flex items-center justify-center py-6">
+              <div className="relative w-48 h-48 rounded-full shadow-inner ring-4 ring-slate-50" 
+                   style={{ 
+                     background: 'conic-gradient(#3b82f6 0% 45%, #10b981 45% 75%, #f59e0b 75% 90%, #ef4444 90% 100%)' 
+                   }}>
+                <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+                  <span className="text-3xl font-bold text-slate-800">1,240</span>
+                  <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Units</span>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // 5. Line Chart (SVG)
+        const SimpleLineChart = () => {
+          const points = [10, 40, 30, 70, 45, 80, 55, 90, 60];
+          const width = 100;
+          const height = 50;
+          const maxY = 100;
+          
+          const polylinePoints = points.map((y, i) => {
+            const x = (i / (points.length - 1)) * width;
+            const yCoord = height - (y / maxY) * height;
+            return `${x},${yCoord}`;
+          }).join(' ');
+
+          return (
+            <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible preserve-3d">
+              <defs>
+                <linearGradient id="lineGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polyline
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                points={polylinePoints}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="drop-shadow-md"
+              />
+               <polygon
+                fill="url(#lineGradient)"
+                stroke="none"
+                points={`0,50 ${polylinePoints} 100,50`}
+              />
+              {/* Dots */}
+              {points.map((y, i) => {
+                  const x = (i / (points.length - 1)) * width;
+                  const yCoord = height - (y / maxY) * height;
+                  return (
+                      <circle key={i} cx={x} cy={yCoord} r="1.5" className="fill-white stroke-blue-500 stroke-[0.5]" />
+                  )
+              })}
+            </svg>
+          );
+        };
+
+        // --- Main Views ---
+
+        const DashboardHome = ({ setActiveTab }) => (
+          <div className="space-y-6 animate-fade-in pb-10">
+            {/* Welcome Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Good Morning, Alex 👋</h2>
+                <p className="text-slate-500 text-sm">Here's what's happening in your distribution network today.</p>
+              </div>
+              <div className="flex gap-2">
+                 <button className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 shadow-sm transition-all hover:border-slate-300">
+                   <Download className="w-4 h-4 mr-2" /> Report
+                 </button>
+                 <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md shadow-blue-200 transition-all hover:-translate-y-0.5">
+                   <Plus className="w-4 h-4 mr-2" /> New Order
+                 </button>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { title: 'Total Revenue', value: '$24,500', trend: '+12%', icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+                { title: 'Orders Today', value: '145', trend: '+5%', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                { title: 'Low Stock Items', value: '12', trend: 'Warning', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+                { title: 'Active Distributors', value: '48', trend: '+2', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
+              ].map((stat, idx) => (
+                <Card key={idx} className={`p-5 cursor-pointer border-l-4 ${stat.border.replace('border', 'border-l')}`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">{stat.title}</p>
+                      <h3 className="text-2xl font-bold text-slate-800 mt-1">{stat.value}</h3>
+                    </div>
+                    <div className={`p-3 rounded-xl ${stat.bg}`}>
+                      <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center text-sm">
+                    {stat.trend === 'Warning' ? (
+                      <span className="text-amber-600 flex items-center font-bold text-xs"><AlertTriangle className="w-3 h-3 mr-1"/> ACTION NEEDED</span>
+                    ) : (
+                      <span className="text-emerald-600 flex items-center font-bold text-xs"><TrendingUp className="w-3 h-3 mr-1"/> {stat.trend} VS YESTERDAY</span>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Sales Graph */}
+              <Card className="lg:col-span-2">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-slate-400" /> Sales Overview
+                  </h3>
+                  <select className="text-sm border border-slate-200 rounded-md text-slate-600 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 px-3 py-1.5 font-medium cursor-pointer hover:bg-slate-100 transition-colors outline-none">
+                    <option>Last 7 Days</option>
+                    <option>Last Month</option>
+                    <option>This Quarter</option>
+                  </select>
+                </div>
+                <SimpleBarChart data={SALES_DATA} />
+              </Card>
+
+              {/* Stock Distribution */}
+              <Card>
+                <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                   <Package className="w-5 h-5 text-slate-400" /> Inventory Mix
+                </h3>
+                <DonutChart />
+                <div className="space-y-3 mt-4">
+                  {[
+                    { label: 'Milk & Cream', color: 'bg-blue-500', val: '45%' },
+                    { label: 'Yogurt & Curd', color: 'bg-emerald-500', val: '30%' },
+                    { label: 'Butter & Cheese', color: 'bg-amber-500', val: '15%' },
+                    { label: 'Others', color: 'bg-red-500', val: '10%' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm group cursor-pointer hover:bg-slate-50 p-1.5 rounded transition-colors">
+                      <div className="flex items-center">
+                        <span className={`w-3 h-3 rounded-full mr-3 shadow-sm ${item.color}`}></span>
+                        <span className="text-slate-600 font-medium">{item.label}</span>
+                      </div>
+                      <span className="font-bold text-slate-800">{item.val}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Recent Orders & Alerts Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 overflow-hidden" noPadding>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-slate-800">Recent Orders</h3>
+                  <button 
+                    onClick={() => setActiveTab('orders')} 
+                    className="text-blue-600 text-sm font-semibold hover:text-blue-700 flex items-center gap-1 group"
+                  >
+                    View All <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold">Order ID</th>
+                        <th className="px-6 py-4 font-semibold">Customer</th>
+                        <th className="px-6 py-4 font-semibold">Amount</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {MOCK_ORDERS.slice(0, 4).map((order) => (
+                        <tr key={order.id} className="bg-white hover:bg-slate-50 transition-colors cursor-pointer">
+                          <td className="px-6 py-4 font-medium text-slate-900">{order.id}</td>
+                          <td className="px-6 py-4 text-slate-600">{order.customer}</td>
+                          <td className="px-6 py-4 font-bold text-slate-800">${order.amount.toLocaleString()}</td>
+                          <td className="px-6 py-4"><StatusBadge status={order.status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              
+              {/* Critical Alerts */}
+              <Card className="p-0 overflow-hidden bg-white" noPadding>
+                <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-rose-50 to-white">
+                  <h3 className="text-rose-800 font-bold flex items-center">
+                    <AlertTriangle className="w-5 h-5 mr-2" /> Critical Alerts
+                  </h3>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer group">
+                    <div className="flex justify-between items-start">
+                      <h4 className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">Fresh Milk Expiring</h4>
+                      <span className="text-xs text-rose-500 font-medium bg-rose-50 px-2 py-0.5 rounded-full">2h ago</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Batch B-102 (45 Liters) expires tomorrow. Action required.</p>
+                  </div>
+                  <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer group">
+                    <div className="flex justify-between items-start">
+                      <h4 className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">Freezer 2 Temp High</h4>
+                      <span className="text-xs text-rose-500 font-medium bg-rose-50 px-2 py-0.5 rounded-full">15m ago</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Temperature detected at 8°C. Check compressor.</p>
+                  </div>
+                   <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer group">
+                    <div className="flex justify-between items-start">
+                      <h4 className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">Stockout Warning</h4>
+                      <span className="text-xs text-amber-500 font-medium bg-amber-50 px-2 py-0.5 rounded-full">1d ago</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Chocolate Milk stock depleted.</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        );
+
+        const InventoryView = () => {
+          const [searchTerm, setSearchTerm] = useState('');
+          
+          const filteredProducts = MOCK_PRODUCTS.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.batch.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+
+          return (
+            <div className="space-y-6 animate-fade-in pb-10">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                   <h2 className="text-2xl font-bold text-slate-800">Inventory Management</h2>
+                   <p className="text-slate-500 text-sm">Manage stock levels, expiry dates and batches.</p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button className="flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-all">
+                    <Download className="w-4 h-4 mr-2" /> Export CSV
+                  </button>
+                  <button className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md shadow-blue-200 transition-all">
+                    <Plus className="w-4 h-4 mr-2" /> Add Product
+                  </button>
+                </div>
+              </div>
+
+              <Card className="overflow-hidden" noPadding>
+                {/* Toolbar */}
+                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between bg-white">
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search product, batch..." 
+                      className="pl-10 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="flex items-center px-3 py-2 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors">
+                      <Filter className="w-4 h-4 mr-2" /> Filter
+                    </button>
+                    <button className="flex items-center px-3 py-2 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors">
+                       Sort By: Name <ChevronDown className="w-4 h-4 ml-1" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold">Product Name</th>
+                        <th className="px-6 py-4 font-semibold">Category</th>
+                        <th className="px-6 py-4 font-semibold">Batch</th>
+                        <th className="px-6 py-4 font-semibold">Stock</th>
+                        <th className="px-6 py-4 font-semibold">Price/Unit</th>
+                        <th className="px-6 py-4 font-semibold">Expiry</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
+                        <th className="px-6 py-4 text-right font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {filteredProducts.map((product) => (
+                        <tr key={product.id} className="bg-white hover:bg-slate-50 transition-colors group">
+                          <td className="px-6 py-4 font-medium text-slate-900">{product.name}</td>
+                          <td className="px-6 py-4 text-slate-600">{product.category}</td>
+                          <td className="px-6 py-4"><span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded w-fit border border-slate-200">{product.batch}</span></td>
+                          <td className="px-6 py-4 font-medium">
+                            {product.stock} <span className="text-xs text-slate-400 font-normal ml-1">{product.unit}</span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-700">${product.price}</td>
+                          <td className="px-6 py-4 text-slate-600 flex items-center">
+                            {product.expiry}
+                            {new Date(product.expiry) < new Date('2023-11-20') && (
+                               <div className="group/tooltip relative ml-2">
+                                 <AlertTriangle className="w-4 h-4 text-red-500" />
+                                 <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none">Expiring Soon</span>
+                               </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4"><StatusBadge status={product.status} /></td>
+                          <td className="px-6 py-4 text-right">
+                            <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredProducts.length === 0 && (
+                  <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                    <Search className="w-12 h-12 text-slate-300 mb-3" />
+                    <p className="text-lg font-medium text-slate-600">No products found</p>
+                    <p className="text-sm">We couldn't find anything matching "{searchTerm}"</p>
+                  </div>
+                )}
+              </Card>
+            </div>
+          );
+        };
+
+        const OrdersView = () => (
+          <div className="space-y-6 animate-fade-in pb-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Order Management</h2>
+                <p className="text-slate-500 text-sm">Track and process customer orders.</p>
+              </div>
+              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md shadow-blue-200 transition-all">
+                <Plus className="w-4 h-4 mr-2" /> Create Order
+              </button>
+            </div>
+
+            {/* Order Table */}
+            <Card className="overflow-hidden" noPadding>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50/50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold">Order ID</th>
+                        <th className="px-6 py-4 font-semibold">Date</th>
+                        <th className="px-6 py-4 font-semibold">Customer</th>
+                        <th className="px-6 py-4 font-semibold">Items</th>
+                        <th className="px-6 py-4 font-semibold">Amount</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
+                        <th className="px-6 py-4 text-right font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {MOCK_ORDERS.map((order) => (
+                        <tr key={order.id} className="bg-white hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 font-medium text-blue-600 hover:underline cursor-pointer">{order.id}</td>
+                          <td className="px-6 py-4 text-slate-500">{order.date}</td>
+                          <td className="px-6 py-4 font-medium text-slate-800">{order.customer}</td>
+                          <td className="px-6 py-4 text-slate-600 truncate max-w-xs">{order.items}</td>
+                          <td className="px-6 py-4 font-bold text-slate-900">${order.amount.toLocaleString()}</td>
+                          <td className="px-6 py-4"><StatusBadge status={order.status} /></td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                               <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-200" title="Mark Delivered"><CheckCircle className="w-4 h-4" /></button>
+                               <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Cancel Order"><XCircle className="w-4 h-4" /></button>
+                               <button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors" title="More"><MoreVertical className="w-4 h-4" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+            </Card>
+          </div>
+        );
+
+        const CustomersView = () => (
+          <div className="space-y-6 animate-fade-in pb-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Customers</h2>
+                <p className="text-slate-500 text-sm">Manage your relationships and loyalty tiers.</p>
+              </div>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="Search customers..." 
+                  className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all"
+                />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {MOCK_CUSTOMERS.map((customer) => (
+                <Card key={customer.id} className="hover:-translate-y-1 transition-transform duration-300">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                        customer.tier === 'Platinum' ? 'bg-indigo-100 text-indigo-700' :
+                        customer.tier === 'Gold' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {customer.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800">{customer.name}</h3>
+                        <span className="text-xs text-slate-500">{customer.type}</span>
+                      </div>
+                    </div>
+                    <StatusBadge status={customer.status} />
+                  </div>
+
+                  <div className="space-y-2 mb-6">
+                      <div className="flex items-center text-sm text-slate-600">
+                        <Phone className="w-4 h-4 mr-2 text-slate-400" /> {customer.phone}
+                      </div>
+                      <div className="flex items-center text-sm text-slate-600">
+                        <Mail className="w-4 h-4 mr-2 text-slate-400" /> {customer.email}
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Total Spent</p>
+                      <p className="font-bold text-slate-800">${customer.totalSpent.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Orders</p>
+                      <p className="font-bold text-slate-800">{customer.orders}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100">
+                      View History
+                    </button>
+                    <button className="flex-1 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors">
+                      Edit
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        );
+
+        const AnalyticsView = () => (
+          <div className="space-y-6 animate-fade-in pb-10">
+            <div className="flex justify-between items-center">
+               <div>
+                <h2 className="text-2xl font-bold text-slate-800">Analytics Dashboard</h2>
+                <p className="text-slate-500 text-sm">Deep dive into your business performance.</p>
+               </div>
+               <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                 <button className="px-3 py-1 text-xs font-medium bg-slate-100 text-slate-800 rounded">Day</button>
+                 <button className="px-3 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 rounded">Week</button>
+                 <button className="px-3 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 rounded">Month</button>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg shadow-indigo-200">
+                <p className="text-indigo-100 font-medium mb-1">Total Profit</p>
+                <h3 className="text-3xl font-bold">$12,450</h3>
+                <div className="flex items-center mt-2 text-sm text-indigo-100 bg-white/20 w-fit px-2 py-1 rounded">
+                  <TrendingUp className="w-4 h-4 mr-1" /> +15% this month
+                </div>
+              </Card>
+              <Card className="p-6 bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-none shadow-lg shadow-emerald-200">
+                <p className="text-emerald-100 font-medium mb-1">Total Orders</p>
+                <h3 className="text-3xl font-bold">1,204</h3>
+                <div className="flex items-center mt-2 text-sm text-emerald-100 bg-white/20 w-fit px-2 py-1 rounded">
+                  <TrendingUp className="w-4 h-4 mr-1" /> +8% this month
+                </div>
+              </Card>
+              <Card className="p-6 bg-white border border-slate-200 shadow-sm">
+                <p className="text-slate-500 font-medium mb-1">Pending Returns</p>
+                <h3 className="text-3xl font-bold text-slate-800">14</h3>
+                 <div className="flex items-center mt-2 text-sm text-rose-600 bg-rose-50 w-fit px-2 py-1 rounded font-medium">
+                  <TrendingDown className="w-4 h-4 mr-1" /> -2% this month
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <h3 className="font-bold text-slate-800 mb-6">Revenue Trend</h3>
+                <div className="h-64">
+                   <SimpleLineChart />
+                </div>
+                <div className="flex justify-between text-xs text-slate-400 px-2 mt-2">
+                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 className="font-bold text-slate-800 mb-2">Category Performance</h3>
+                <div className="flex items-center justify-center">
+                  <DonutChart />
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                   <div className="text-center p-3 bg-slate-50 rounded-lg">
+                     <span className="block text-xs text-slate-500 uppercase">Top Category</span>
+                     <span className="font-bold text-slate-800">Milk & Cream</span>
+                   </div>
+                   <div className="text-center p-3 bg-slate-50 rounded-lg">
+                     <span className="block text-xs text-slate-500 uppercase">Least Sold</span>
+                     <span className="font-bold text-slate-800">Beverages</span>
+                   </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        );
+
+        const DeliveriesView = () => (
+          <div className="space-y-6 animate-fade-in pb-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Fleet Management</h2>
+                <p className="text-slate-500 text-sm">Real-time tracking of your delivery trucks.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* List of Deliveries */}
+              <div className="lg:col-span-2 space-y-4">
+                {MOCK_DELIVERIES.map((delivery) => (
+                  <Card key={delivery.id} className="hover:border-blue-200 transition-colors">
+                    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-slate-100 p-3 rounded-xl">
+                          <Truck className="w-6 h-6 text-slate-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-800">{delivery.route}</h4>
+                          <p className="text-sm text-slate-500 flex items-center mt-1">
+                            <span className="font-medium text-slate-700 mr-2">{delivery.driver}</span> 
+                            • {delivery.vehicle}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 min-w-[200px]">
+                        <div className="flex-1">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-500">Progress</span>
+                            <span className="font-bold text-slate-700">{delivery.progress}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${
+                                delivery.status === 'Delayed' ? 'bg-rose-500' : 'bg-blue-600'
+                              }`} 
+                              style={{ width: `${delivery.progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        <StatusBadge status={delivery.status} />
+                      </div>
+                    </div>
+                    {delivery.status !== 'Completed' && (
+                      <div className="mt-4 pt-4 border-t border-slate-50 flex items-center text-sm text-slate-600">
+                        <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+                        Next Stop: <span className="font-medium ml-1 text-slate-800">{delivery.nextStop}</span>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+
+              {/* Mini Map Placeholder / Driver Stats */}
+              <div className="space-y-6">
+                <Card className="h-64 bg-slate-100 flex items-center justify-center border-dashed border-2 border-slate-300">
+                   <div className="text-center text-slate-400">
+                     <MapPin className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                     <p className="text-sm font-medium">Live Map View</p>
+                     <p className="text-xs">Integration required</p>
+                   </div>
+                </Card>
+                
+                <Card>
+                  <h4 className="font-bold text-slate-800 mb-4">Fleet Status</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center text-sm text-slate-600">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> On Route
+                      </div>
+                      <span className="font-bold text-slate-800">12</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                      <div className="flex items-center text-sm text-slate-600">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span> Loading
+                      </div>
+                      <span className="font-bold text-slate-800">4</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                      <div className="flex items-center text-sm text-slate-600">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> Available
+                      </div>
+                      <span className="font-bold text-slate-800">8</span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
+        );
+
+        const ScheduleView = () => (
+          <div className="space-y-6 animate-fade-in pb-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Daily Schedule</h2>
+                <p className="text-slate-500 text-sm">Tasks, maintenance, and reminders.</p>
+              </div>
+              <div className="text-right">
+                <h3 className="text-lg font-bold text-slate-800">Oct 25, 2023</h3>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Wednesday</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+               <Card className="lg:col-span-3">
+                 <div className="space-y-1">
+                   {MOCK_TASKS.map((task) => (
+                     <div key={task.id} className="flex items-center p-4 hover:bg-slate-50 rounded-xl transition-colors group border border-transparent hover:border-slate-100">
+                       <div className="mr-4 text-slate-400 group-hover:text-blue-600 transition-colors">
+                         {task.status === 'Completed' ? (
+                           <CheckCircle className="w-6 h-6 text-emerald-500" />
+                         ) : (
+                           <div className="w-6 h-6 rounded-full border-2 border-slate-300 group-hover:border-blue-500"></div>
+                         )}
+                       </div>
+                       <div className="flex-1">
+                         <h4 className={`font-bold text-slate-800 ${task.status === 'Completed' ? 'line-through text-slate-400' : ''}`}>
+                           {task.title}
+                         </h4>
+                         <div className="flex items-center mt-1 text-xs text-slate-500">
+                           <Clock className="w-3 h-3 mr-1" /> {task.time}
+                         </div>
+                       </div>
+                       <StatusBadge status={task.priority} />
+                     </div>
+                   ))}
+                   <div className="p-4">
+                      <button className="text-sm font-medium text-slate-500 flex items-center hover:text-blue-600 transition-colors">
+                        <Plus className="w-4 h-4 mr-2" /> Add new task
+                      </button>
+                   </div>
+                 </div>
+               </Card>
+
+               <div className="space-y-6">
+                 <Card className="bg-blue-600 text-white border-none shadow-lg shadow-blue-200">
+                   <h4 className="font-bold text-lg mb-2">Next Meeting</h4>
+                   <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                     <p className="font-medium">Supplier Review</p>
+                     <p className="text-sm text-blue-100 mt-1">2:30 PM - Conference Room</p>
+                     <div className="flex -space-x-2 mt-3">
+                       {[1,2,3].map(i => (
+                         <div key={i} className="w-8 h-8 rounded-full bg-blue-200 border-2 border-blue-600 flex items-center justify-center text-xs font-bold text-blue-800">
+                           {String.fromCharCode(64+i)}
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 </Card>
+                 
+                 <Card>
+                   <h4 className="font-bold text-slate-800 mb-3">Notices</h4>
+                   <ul className="space-y-3">
+                     <li className="text-sm text-slate-600 flex items-start">
+                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 mr-2 shrink-0"></span>
+                       Health inspection scheduled for next Monday.
+                     </li>
+                     <li className="text-sm text-slate-600 flex items-start">
+                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2 shrink-0"></span>
+                       New batch of packaging arriving tomorrow.
+                     </li>
+                   </ul>
+                 </Card>
+               </div>
+            </div>
+          </div>
+        );
+
+        // --- Main App Shell ---
+
+        function App() {
+          const [activeTab, setActiveTab] = useState('dashboard');
+          const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+          const [isMobile, setIsMobile] = useState(false);
+
+          // Responsive check
+          useEffect(() => {
+            const handleResize = () => setIsMobile(window.innerWidth < 1024);
+            handleResize();
+            window.addEventListener('resize', handleResize);
+            return () => window.removeEventListener('resize', handleResize);
+          }, []);
+
+          const NavItem = ({ id, label, icon: IconComponent }) => (
+            <button
+              onClick={() => {
+                setActiveTab(id);
+                if (isMobile) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center px-4 py-3 mb-1.5 rounded-xl transition-all duration-200 font-medium text-sm group ${
+                activeTab === id 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 translate-x-1' 
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <IconComponent className={`w-5 h-5 mr-3 transition-colors ${activeTab === id ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <span>{label}</span>
+              {activeTab === id && <ChevronRight className="w-4 h-4 ml-auto text-blue-400 opacity-50" />}
+            </button>
+          );
+
+          return (
+            <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+              
+              {/* Mobile Sidebar Overlay */}
+              {isMobile && isSidebarOpen && (
+                <div 
+                  className="fixed inset-0 bg-slate-900/50 z-20 backdrop-blur-sm transition-opacity"
+                  onClick={() => setIsSidebarOpen(false)}
+                />
+              )}
+
+              {/* Sidebar */}
+              <aside 
+                className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white border-r border-slate-100 transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none ${
+                  isMobile && !isSidebarOpen ? '-translate-x-full' : 'translate-x-0'
+                }`}
+              >
+                <div className="p-8 pb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+                      <Package className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <span className="block text-xl font-bold tracking-tight text-slate-800">DairyPro</span>
+                      <span className="block text-xs text-slate-400 uppercase tracking-widest font-semibold">Distributor</span>
+                    </div>
+                  </div>
+                  {isMobile && (
+                    <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-slate-600">
+                      <X className="w-6 h-6" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="px-6 py-4 flex-1 overflow-y-auto scrollbar-hide">
+                  <div className="space-y-1">
+                    <p className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Main Menu</p>
+                    <NavItem id="dashboard" label="Dashboard" icon={LayoutDashboard} />
+                    <NavItem id="inventory" label="Inventory" icon={Package} />
+                    <NavItem id="orders" label="Orders" icon={ShoppingCart} />
+                    <NavItem id="customers" label="Customers" icon={Users} />
+                  </div>
+
+                  <div className="space-y-1 mt-8">
+                    <p className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Operations</p>
+                    <NavItem id="analytics" label="Analytics" icon={BarChart3} />
+                    <NavItem id="deliveries" label="Fleet & Deliveries" icon={Truck} />
+                    <NavItem id="schedule" label="Schedule" icon={Calendar} />
+                  </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-50">
+                  <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 cursor-pointer transition-all group">
+                    <img 
+                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
+                      alt="User" 
+                      className="w-10 h-10 rounded-full bg-white border-2 border-white shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">Alex Distributor</p>
+                      <p className="text-xs text-slate-500 truncate">Admin Account</p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              </aside>
+
+              {/* Main Content Area */}
+              <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50/50">
+                {/* Top Header */}
+                <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-6 z-10 sticky top-0">
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => setIsSidebarOpen(true)}
+                      className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      <Menu className="w-6 h-6" />
+                    </button>
+                    <div className="hidden sm:block">
+                       <h1 className="text-xl font-bold text-slate-800 capitalize flex items-center gap-2">
+                         {activeTab.replace('-', ' ')}
+                       </h1>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {/* Search Bar */}
+                    <div className="hidden md:flex relative group">
+                      <input 
+                        type="text" 
+                        placeholder="Global search..." 
+                        className="pl-10 pr-4 py-2.5 bg-slate-100/50 border border-slate-200 rounded-full text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:w-80 transition-all duration-300"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 group-focus-within:text-blue-500 transition-colors" />
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
+
+                    <button className="relative p-2.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600 rounded-full transition-all">
+                      <Bell className="w-5 h-5" />
+                      <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+                    </button>
+                    <button className="p-2.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600 rounded-full transition-all">
+                      <Thermometer className="w-5 h-5" />
+                    </button>
+                  </div>
+                </header>
+
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth custom-scrollbar">
+                  <div className="max-w-7xl mx-auto">
+                    {activeTab === 'dashboard' && <DashboardHome setActiveTab={setActiveTab} />}
+                    {activeTab === 'inventory' && <InventoryView />}
+                    {activeTab === 'orders' && <OrdersView />}
+                    {activeTab === 'customers' && <CustomersView />}
+                    {activeTab === 'analytics' && <AnalyticsView />}
+                    {activeTab === 'deliveries' && <DeliveriesView />}
+                    {activeTab === 'schedule' && <ScheduleView />}
+                  </div>
+                </div>
+              </main>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
